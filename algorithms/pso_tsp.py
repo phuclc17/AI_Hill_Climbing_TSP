@@ -1,8 +1,8 @@
 import random
 import copy 
 
-from models.city import City
 from models.tour import Tour 
+from algorithms.base_tsp_solver import BaseTspSolver
 
 class Particle:
     def __init__(self, initial_tour: Tour):
@@ -22,21 +22,19 @@ class Particle:
             self.pbest_distance = self.current_distance
             self.pbest_tour = self.current_tour.copy()
 
-class PSOSolver:
+class PSOSolver(BaseTspSolver): 
     def __init__(self, cities, distance_matrix, swarm_size, num_iterations, w, c1, c2):
-        self.all_cities = cities
-        self.distance_matrix = distance_matrix # Lưu trữ matrix
-        self.num_cities = len(cities)
+        # Gọi __init__ của lớp cha
+        super().__init__(cities, distance_matrix)
+        
+        # Các thuộc tính riêng của PSO
         self.swarm_size = swarm_size
         self.num_iterations = num_iterations
-        
         self.w = w   # Quán tính
         self.c1 = c1 # Nhận thức (pbest)
         self.c2 = c2 # Xã hội (gbest)
         
         self.swarm = []
-        self.gbest_tour = None
-        self.gbest_distance = float('inf')
 
         print("--- Khởi tạo PSOSolver ---")
         print(f"Tham số: w={w}, c1={c1}, c2={c2}")
@@ -54,17 +52,18 @@ class PSOSolver:
             particle = Particle(random_tour)
             self.swarm.append(particle)
             
-            if particle.pbest_distance < self.gbest_distance:
-                self.gbest_distance = particle.pbest_distance
-                self.gbest_tour = particle.pbest_tour.copy()
+            if particle.pbest_distance < self.best_distance:
+                self.best_distance = particle.pbest_distance
+                self.best_tour = particle.pbest_tour.copy()
         
-        print(f"Khởi tạo hoàn tất. gbest ban đầu: {self.gbest_distance:.2f}")
+        print(f"Khởi tạo hoàn tất. gbest ban đầu: {self.best_distance:.2f}")
 
     def _find_swaps(self, tour_a: Tour, tour_b: Tour):
         # Phép "trừ" (velocity = tour_b - tour_a)
         swaps = []
         temp_cities = list(tour_a.cities)
         target_cities = tour_b.cities
+        
         city_to_index_map = {city: i for i, city in enumerate(temp_cities)}
 
         for i in range(self.num_cities):
@@ -99,11 +98,11 @@ class PSOSolver:
             return []
         
         k = int(len(swaps) * probability_factor)
-        k = max(0, min(k, len(swaps)))
+        k = max(0, min(k, len(swaps))) 
         
         return random.sample(swaps, k)
 
-    def solve(self):
+    def solve(self, **kwargs):
         if not self.all_cities:
             print("Lỗi: Chưa có thành phố nào.")
             return None, 0, [] 
@@ -111,15 +110,15 @@ class PSOSolver:
         self._initialize_swarm()
         
         print("\nBắt đầu quá trình tối ưu...")
-        convergence_history = [self.gbest_distance]
+        convergence_history = [self.best_distance]
 
         for i in range(self.num_iterations):
             
-            # Cập nhật gbest
+            # Cập nhật gbest (best_tour)
             best_particle_in_iteration = min(self.swarm, key=lambda p: p.current_distance)
-            if best_particle_in_iteration.current_distance < self.gbest_distance:
-                self.gbest_distance = best_particle_in_iteration.current_distance
-                self.gbest_tour = best_particle_in_iteration.current_tour.copy()
+            if best_particle_in_iteration.current_distance < self.best_distance:
+                self.best_distance = best_particle_in_iteration.current_distance
+                self.best_tour = best_particle_in_iteration.current_tour.copy()
 
             for particle in self.swarm:
                 
@@ -133,26 +132,27 @@ class PSOSolver:
                 cognitive_swaps = self._sample_swaps(pbest_diff_swaps, self.c1 * r1)
 
                 r2 = random.random()
-                gbest_diff_swaps = self._find_swaps(particle.current_tour, self.gbest_tour)
+                gbest_diff_swaps = self._find_swaps(particle.current_tour, self.best_tour)
                 social_swaps = self._sample_swaps(gbest_diff_swaps, self.c2 * r2)
 
+                # Vận tốc mới v(t+1)
                 particle.velocity = inertia_swaps + cognitive_swaps + social_swaps
 
-                # x(t+1) = x(t) + v(t+1)
+                # Vị trí mới x(t+1) = x(t) + v(t+1)
                 particle.current_tour = self._apply_swaps(particle.current_tour, particle.velocity)
                 
                 particle.update_pbest()
 
-            convergence_history.append(self.gbest_distance)
+            convergence_history.append(self.best_distance)
             
             if (i + 1) % 10 == 0:
-                print(f"Vòng {i+1}/{self.num_iterations} - gbest: {self.gbest_distance:.2f}")
+                print(f"Vòng {i+1}/{self.num_iterations} - gbest: {self.best_distance:.2f}")
         
         print("\n--- Tối ưu hoàn tất! ---")
-        if self.gbest_tour:
-            print(f"Quãng đường ngắn nhất (gbest): {self.gbest_distance:.2f}")
-            print(f"Chu trình tốt nhất (id): {[city.id for city in self.gbest_tour.cities]}")
+        if self.best_tour:
+            print(f"Quãng đường ngắn nhất (gbest): {self.best_distance:.2f}")
+            print(f"Chu trình tốt nhất (id): {[city.id for city in self.best_tour.cities]}")
         else:
             print("Không tìm thấy chu trình tốt nhất.")
             
-        return self.gbest_tour, self.gbest_distance, convergence_history
+        return self.best_tour, self.best_distance, convergence_history
