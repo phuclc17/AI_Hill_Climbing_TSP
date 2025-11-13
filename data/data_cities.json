@@ -1,0 +1,88 @@
+{
+  "locations": [
+    {
+      "id": 0,
+      "name": "Hanoi",
+      "latitude": 21.0285,
+      "longitude": 105.8542
+    },
+    {
+      "id": 1,
+      "name": "Ha Long",
+      "latitude": 20.9517,
+      "longitude": 107.0739
+    },
+    {
+      "id": 2,
+      "name": "Hai Phong",
+      "latitude": 20.8651,
+      "longitude": 106.6838
+    },
+    {
+      "id": 3,
+      "name": "Sa Pa",
+      "latitude": 22.3402,
+      "longitude": 103.844
+    },
+    {
+      "id": 4,
+      "name": "Vinh",
+      "latitude": 18.6667,
+      "longitude": 105.6667
+    },
+    {
+      "id": 5,
+      "name": "Hue",
+      "latitude": 16.4639,
+      "longitude": 107.5867
+    },
+    {
+      "id": 6,
+      "name": "Da Nang",
+      "latitude": 16.0678,
+      "longitude": 108.2208
+    },
+    {
+      "id": 7,
+      "name": "Quy Nhon",
+      "latitude": 13.77,
+      "longitude": 109.23
+    },
+    {
+      "id": 8,
+      "name": "Nha Trang",
+      "latitude": 12.245,
+      "longitude": 109.1917
+    },
+    {
+      "id": 9,
+      "name": "Da Lat",
+      "latitude": 11.9431,
+      "longitude": 108.446
+    },
+    {
+      "id": 10,
+      "name": "Ho Chi Minh City",
+      "latitude": 10.7756,
+      "longitude": 106.7019
+    },
+    {
+      "id": 11,
+      "name": "Vung Tau",
+      "latitude": 10.3458,
+      "longitude": 107.0843
+    },
+    {
+      "id": 12,
+      "name": "Can Tho",
+      "latitude": 10.0333,
+      "longitude": 105.7833
+    },
+    {
+      "id": 13,
+      "name": "Ca Mau",
+      "latitude": 9.1833,
+      "longitude": 105.15
+    }
+  ]
+}
