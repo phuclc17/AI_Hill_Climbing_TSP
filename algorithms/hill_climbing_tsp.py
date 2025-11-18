@@ -1,116 +1,77 @@
-"""
-Simple Hill-Climbing (2-opt) TSP solver with a CLI runner.
+# File: algorithms/hill_climbing_tsp.py
 
-Usage (from repo root):
-    python -m algorithms.hill_climbing_tsp --data data/data_cities.json --method nn --seed 42
-
-This implementation uses only the Python standard library.
-"""
-import argparse
-import json
-import os
-import sys
 import time
-from typing import List
-
-# Ensure project root is on sys.path when running the script directly so
-# imports like `models.city` and `utils.*` resolve correctly.
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _ROOT not in sys.path:
-    sys.path.insert(0, _ROOT)
-
-from models.city import City
+import random
 from models.tour import Tour
-from utils.distance_matrix import DistanceMatrix
 from utils.tour_generator import random_tour, nearest_neighbor_tour
 
-
-def two_opt_swap(cities: List[City], i: int, k: int) -> List[City]:
+def two_opt_swap(cities, i, k):
     new = cities[:i] + list(reversed(cities[i:k + 1])) + cities[k + 1:]
     return new
 
-
 class HillClimbingSolver:
-    def __init__(self, cities: List[City], distance_matrix: DistanceMatrix):
+    def __init__(self, cities, distance_matrix):
         self.cities = cities
         self.distance_matrix = distance_matrix
 
-    def run(self, initial_method: str = 'random', seed: int | None = None, max_no_improve: int = 1000):
+    def run(self, initial_method='random', start_city_id=None, seed=None, max_no_improve=100):
+        """
+        Cải tiến: Trả về thêm 'log_history' để in ra GUI.
+        """
+        if seed is not None:
+            random.seed(seed)
+
+        # 1. Tạo Tour ban đầu
         if initial_method == 'nn':
-            current_cities = nearest_neighbor_tour(self.cities, self.distance_matrix)
+            # Tìm object city tương ứng với start_city_id
+            start_node = next((c for c in self.cities if c.id == start_city_id), None)
+            current_cities = nearest_neighbor_tour(self.cities, self.distance_matrix, start_node)
         else:
             current_cities = random_tour(self.cities, seed)
 
-        current = Tour(current_cities, self.distance_matrix)
-        best = current
+        current_tour = Tour(current_cities, self.distance_matrix)
+        best_tour = current_tour
+        
+        # Danh sách lưu lịch sử để vẽ biểu đồ: [ (iteration, distance), ... ]
+        history = [current_tour.distance]
+        # Danh sách lưu log để in ra màn hình: [ (step, distance, path_str), ... ]
+        solution_log = []
 
-        n = len(current.cities)
+        n = len(current_tour.cities)
         no_improve = 0
+        step = 0
 
         start_time = time.time()
+        
+        # Ghi lại trạng thái đầu tiên
+        solution_log.append((0, current_tour.distance, str(current_tour)))
 
         while no_improve < max_no_improve:
             improved = False
-            # simple 2-opt first-improvement
+            step += 1
+            
+            # Duyệt qua các lân cận (2-opt)
             for i in range(0, n - 1):
                 for k in range(i + 1, n):
-                    candidate_cities = two_opt_swap(current.cities, i, k)
-                    candidate = Tour(candidate_cities, self.distance_matrix)
-                    if candidate.distance < best.distance:
-                        best = candidate
-                        current = candidate
+                    new_cities = two_opt_swap(current_tour.cities, i, k)
+                    new_tour = Tour(new_cities, self.distance_matrix)
+                    
+                    if new_tour.distance < best_tour.distance:
+                        best_tour = new_tour
+                        current_tour = new_tour
                         improved = True
                         no_improve = 0
-                        break
+                        
+                        # Lưu log khi tìm thấy đường tốt hơn
+                        history.append(best_tour.distance)
+                        solution_log.append((step, best_tour.distance, str(best_tour)))
+                        break # First improvement
                 if improved:
                     break
 
             if not improved:
                 no_improve += 1
+                history.append(best_tour.distance) # Vẫn lưu để vẽ biểu đồ dài ra
 
         elapsed = time.time() - start_time
-        return best, elapsed
-
-
-def load_cities_from_json(path: str) -> List[City]:
-    with open(path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    locations = data.get('locations', [])
-    cities = []
-    for item in locations:
-        cid = int(item.get('id'))
-        # City expects (id, x, y) — we map x=longitude, y=latitude
-        x = float(item.get('longitude'))
-        y = float(item.get('latitude'))
-        cities.append(City(cid, x, y))
-    return cities
-
-
-def main():
-    parser = argparse.ArgumentParser(description='Hill-Climbing TSP solver (2-opt)')
-    parser.add_argument('--data', '-d', default='data/data_cities.json', help='Path to cities JSON')
-    parser.add_argument('--method', '-m', choices=['random', 'nn'], default='nn', help='Initial tour method')
-    parser.add_argument('--seed', type=int, default=None, help='Random seed')
-    parser.add_argument('--no-improve', type=int, default=100, help='Stop after this many non-improving iterations')
-    args = parser.parse_args()
-
-    cities = load_cities_from_json(args.data)
-    if not cities:
-        print('No cities found in data file')
-        return
-
-    dm = DistanceMatrix(cities)
-    solver = HillClimbingSolver(cities, dm)
-
-    best, elapsed = solver.run(initial_method=args.method, seed=args.seed, max_no_improve=args.no_improve)
-
-    print('Result:')
-    print(f'  Cities: {len(best.cities)}')
-    print(f'  Distance (km): {best.distance:.2f}')
-    print(f'  Time (s): {elapsed:.3f}')
-    print('  Path (ids):')
-    print('    ' + ' -> '.join(str(c.id) for c in best.cities))
-
-
-if __name__ == '__main__':
-    main()
+        return best_tour, history, solution_log, elapsed
