@@ -1,4 +1,3 @@
-# File: comparison/run_history.py
 
 import json
 import os

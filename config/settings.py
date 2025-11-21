@@ -1,20 +1,19 @@
-# File: config/settings.py
+
 
 import os
 
-# --- Đường dẫn (Paths) ---
-# Lấy thư mục gốc của dự án (ví dụ: '.../HILL_CLIMBING_TSP/')
+# Lấy thư mục gốc của dự án
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Đường dẫn đến file dữ liệu (dựa trên data_cities.json)
+# Đường dẫn đến file dữ liệu 
 DATA_FILE_PATH = os.path.join(BASE_DIR, "data", "data_cities.json")
 
-# Đường dẫn đến file lưu lịch sử (dùng cho run_history.py)
+# Đường dẫn đến file lưu lịch sử 
 HISTORY_FILE_PATH = os.path.join(BASE_DIR, "comparison", "run_history.json")
 
 
-# --- Tham số HC (Defaults) ---
-# Dựa trên các tham số trong hill_climbing_tsp.py
+
+# tham số mẫu
 HC_DEFAULT_METHOD = 'nn'
 HC_DEFAULT_SEED = 42
 HC_DEFAULT_MAX_NO_IMPROVE = 100

@@ -1,4 +1,3 @@
-# File: comparison/performance_analyzer.py
 
 import time
 import numpy as np

@@ -1,4 +1,3 @@
-# File: algorithms/hill_climbing_tsp.py
 
 import time
 import random
@@ -15,9 +14,7 @@ class HillClimbingSolver:
         self.distance_matrix = distance_matrix
 
     def run(self, initial_method='random', start_city_id=None, seed=None, max_no_improve=100):
-        """
-        Cải tiến: Trả về thêm 'log_history' để in ra GUI.
-        """
+       
         if seed is not None:
             random.seed(seed)
 
