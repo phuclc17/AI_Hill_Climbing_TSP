@@ -1,4 +1,4 @@
-# File: gui/solver_thread.py
+
 
 import time
 import traceback
@@ -63,8 +63,7 @@ class SolverThread(QThread):
                                    swarm_size, iterations, w, c1, c2)
                 
                 best_tour, best_dist, history = solver.solve()
-                
-                # Tạo log giả lập cho PSO (vì PSO chưa trả về log chi tiết)
+
                 solution_log = []
                 if history:
                     current_best = history[0]
@@ -74,12 +73,8 @@ class SolverThread(QThread):
                             current_best = dist
                             solution_log.append((i, dist, "Cập nhật gBest mới"))
 
-            # --- 2. XỬ LÝ XOAY TOUR (ĐỂ ĐÚNG Ý NGƯỜI DÙNG) ---
-            # Nếu người dùng chọn một điểm xuất phát cụ thể, ta xoay tour để điểm đó nằm đầu
             user_start_id = self.params.get('start_city_id')
             
-            # (Lưu ý: PSO không có tham số start_city_id trong params, nên nó sẽ là None và bỏ qua bước này)
-            # Nếu muốn PSO cũng xoay, bạn cần truyền start_city_id vào params của PSO từ main_window
             
             if best_tour and user_start_id is not None:
                 cities_list = best_tour.cities
@@ -92,12 +87,10 @@ class SolverThread(QThread):
                 
                 if start_index != -1:
                     # Xoay danh sách: Cắt từ start_index đến cuối + từ đầu đến start_index
-                    # Ví dụ: [B, C, A, D] với start=A (index 2) -> [A, D] + [B, C] = [A, D, B, C]
                     rotated_cities = cities_list[start_index:] + cities_list[:start_index]
                     best_tour.cities = rotated_cities
                     # self.log_signal.emit(f"ℹ️ Đã điều chỉnh lộ trình bắt đầu từ: {rotated_cities[0].name}")
 
-            # --- 3. KẾT THÚC ---
             end_time = time.perf_counter()
             elapsed_time = end_time - start_time
             

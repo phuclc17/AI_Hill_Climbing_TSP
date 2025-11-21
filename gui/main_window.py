@@ -178,7 +178,6 @@ class MainWindow(QMainWindow):
         self.combo_algo.currentIndexChanged.connect(self.on_algo_changed)
         l_algo.addRow("Thuật toán:", self.combo_algo)
         
-        # --- CẢI TIẾN: Đưa chọn điểm xuất phát ra dùng chung ---
         self.combo_start_city = QComboBox() # Đây là biến mới
         l_algo.addRow("Điểm Xuất Phát:", self.combo_start_city)
         # -------------------------------------------------------
@@ -266,7 +265,6 @@ class MainWindow(QMainWindow):
         self.distance_matrix = DistanceMatrix(self.cities)
         self.lbl_city_count.setText(f"{count} thành phố")
         
-        # Cập nhật Combobox điểm xuất phát (DÙNG CHUNG)
         self.combo_start_city.clear()
         self.combo_start_city.addItem("Ngẫu nhiên", None)
         for c in self.cities:
@@ -315,7 +313,7 @@ class MainWindow(QMainWindow):
             }
         else:
             params = {
-                'start_city_id': start_id, # Truyền cho PSO (SolverThread sẽ xử lý)
+                'start_city_id': start_id, # Truyền cho PSO 
                 'swarm_size': self.pso_swarm.value(),
                 'num_iterations': self.pso_iter.value(),
                 'w': self.pso_w.value(),
@@ -346,8 +344,6 @@ class MainWindow(QMainWindow):
         self.log("-" * 40, "white")
         self.log(f"🏁 HOÀN THÀNH! Best: {best.distance:.2f} km", "green")
         self.log(f"★ Số lần lặp: {len(history)}", "green")
-        
-        # Log thông minh: Nếu log quá dài (>100 dòng), chỉ hiện 10 dòng đầu + 10 dòng cuối
         self.log("📜 NHẬT KÝ CẢI THIỆN (TÓM TẮT):", "#f9e2af")
         if len(sol_log) > 50:
              for item in sol_log[:10]: self.log(f"[{item[0]}] {item[1]:.2f} km | {item[2]}", "white")

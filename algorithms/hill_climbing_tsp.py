@@ -1,4 +1,4 @@
-# File: algorithms/hill_climbing_tsp.py
+
 
 import time
 import random
@@ -25,12 +25,10 @@ class HillClimbingSolver:
             # Tìm vị trí của start_id
             idx = next(i for i, c in enumerate(tour_cities) if c.id == start_id)
         except StopIteration:
-            return tour_cities # Không tìm thấy, giữ nguyên
+            return tour_cities
 
         if idx == 0:
-            return tour_cities # Đã ở đầu rồi
-
-        # Cắt và ghép lại: [...Start...] -> [Start...] + [...]
+            return tour_cities 
         return tour_cities[idx:] + tour_cities[:idx]
 
     def run(self, initial_method='random', start_city_id=None, seed=None, max_no_improve=100):
@@ -84,9 +82,6 @@ class HillClimbingSolver:
                         improved = True
                         no_improve = 0
                         
-                        # 2. Tạo chuỗi hiển thị giống mẫu: "Tour: A -> B -> ... -> A"
-                        # (Lưu ý: Nếu danh sách quá dài > 63 tỉnh, chuỗi sẽ rất dài, 
-                        # nhưng đây là yêu cầu hiển thị chi tiết)
                         path_names = [c.name for c in best_tour.cities]
                         path_names.append(path_names[0]) # Quay về điểm đầu
                         path_str = " -> ".join(path_names)
