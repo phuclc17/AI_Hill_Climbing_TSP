@@ -11,18 +11,12 @@ from models.tour import Tour
 
 class SolverThread(QThread):
     """
-    Luồng xử lý chạy thuật toán trong nền (Background Thread).
-    Giúp giao diện không bị treo (not responding) khi thuật toán tính toán.
+    Luồng xử lý chạy thuật toán trong nền.
+    Đã cập nhật tính năng: Tự động xoay Tour về điểm xuất phát người dùng chọn.
     """
     
-    # Tín hiệu gửi kết quả về GUI khi chạy xong:
-    # - object: Best Tour (đối tượng Tour)
-    # - list: History (danh sách quãng đường qua các vòng lặp)
-    # - list: Solution Log (danh sách các bước cải thiện: [(step, dist, detail), ...])
-    # - float: Elapsed Time (thời gian chạy tính bằng giây)
+    # Tín hiệu gửi kết quả về GUI
     result_signal = pyqtSignal(object, list, list, float)
-    
-    # Tín hiệu gửi log text về GUI (để hiện dòng chữ đang chạy...)
     log_signal = pyqtSignal(str)
 
     def __init__(self, algo_name, params, cities, distance_matrix):
@@ -41,18 +35,16 @@ class SolverThread(QThread):
         solution_log = []
         
         try:
-            # --- TRƯỜNG HỢP 1: HILL CLIMBING ---
+            # --- 1. CHẠY THUẬT TOÁN ---
+            
             if "Hill" in self.algo_name:
                 solver = HillClimbingSolver(self.cities, self.distance_matrix)
                 
-                # Lấy tham số từ dictionary (với giá trị mặc định an toàn)
                 method = self.params.get('initial_method', 'random')
                 seed = self.params.get('seed', 42)
                 no_improve = self.params.get('max_no_improve', 100)
-                start_city_id = self.params.get('start_city_id', None) # Tham số mới
+                start_city_id = self.params.get('start_city_id', None)
                 
-                # Chạy thuật toán (Hàm run của HC đã được sửa để trả về 4 giá trị)
-                #
                 best_tour, history, solution_log, _ = solver.run(
                     initial_method=method, 
                     start_city_id=start_city_id,
@@ -60,9 +52,7 @@ class SolverThread(QThread):
                     max_no_improve=no_improve
                 )
 
-            # --- TRƯỜNG HỢP 2: PSO (PARTICLE SWARM OPTIMIZATION) ---
             elif "PSO" in self.algo_name:
-                # Lấy tham số PSO
                 swarm_size = self.params.get('swarm_size', 30)
                 iterations = self.params.get('num_iterations', 100)
                 w = self.params.get('w', 0.7)
@@ -72,33 +62,48 @@ class SolverThread(QThread):
                 solver = PSOSolver(self.cities, self.distance_matrix, 
                                    swarm_size, iterations, w, c1, c2)
                 
-                # PSO trả về 3 giá trị: tour, distance, history (list float)
-                #
                 best_tour, best_dist, history = solver.solve()
                 
-                # --- TẠO SOLUTION LOG GIẢ LẬP CHO PSO ---
-                # Vì PSO hiện tại chưa trả về log chi tiết từng bước hoán vị,
-                # ta tạo một log tóm tắt dựa trên history để hiển thị lên bảng GUI.
+                # Tạo log giả lập cho PSO (vì PSO chưa trả về log chi tiết)
                 solution_log = []
                 if history:
                     current_best = history[0]
                     solution_log.append((0, current_best, "Khởi tạo bầy đàn"))
-                    
                     for i, dist in enumerate(history):
-                        # Chỉ ghi lại những lần có sự cải thiện
                         if dist < current_best:
                             current_best = dist
                             solution_log.append((i, dist, "Cập nhật gBest mới"))
+
+            # --- 2. XỬ LÝ XOAY TOUR (ĐỂ ĐÚNG Ý NGƯỜI DÙNG) ---
+            # Nếu người dùng chọn một điểm xuất phát cụ thể, ta xoay tour để điểm đó nằm đầu
+            user_start_id = self.params.get('start_city_id')
             
-            # --- KẾT THÚC ---
+            # (Lưu ý: PSO không có tham số start_city_id trong params, nên nó sẽ là None và bỏ qua bước này)
+            # Nếu muốn PSO cũng xoay, bạn cần truyền start_city_id vào params của PSO từ main_window
+            
+            if best_tour and user_start_id is not None:
+                cities_list = best_tour.cities
+                # Tìm vị trí của thành phố xuất phát trong danh sách kết quả
+                start_index = -1
+                for i, city in enumerate(cities_list):
+                    if city.id == user_start_id:
+                        start_index = i
+                        break
+                
+                if start_index != -1:
+                    # Xoay danh sách: Cắt từ start_index đến cuối + từ đầu đến start_index
+                    # Ví dụ: [B, C, A, D] với start=A (index 2) -> [A, D] + [B, C] = [A, D, B, C]
+                    rotated_cities = cities_list[start_index:] + cities_list[:start_index]
+                    best_tour.cities = rotated_cities
+                    # self.log_signal.emit(f"ℹ️ Đã điều chỉnh lộ trình bắt đầu từ: {rotated_cities[0].name}")
+
+            # --- 3. KẾT THÚC ---
             end_time = time.perf_counter()
             elapsed_time = end_time - start_time
             
-            # Gửi toàn bộ dữ liệu về Main Window
             self.result_signal.emit(best_tour, history, solution_log, elapsed_time)
             
         except Exception as e:
-            # Bắt lỗi nếu có gì đó sai sót trong thuật toán để không crash app
             error_msg = f"LỖI THUẬT TOÁN: {str(e)}"
             self.log_signal.emit(error_msg)
-            print(traceback.format_exc()) # In chi tiết lỗi ra terminal để debug
+            print(traceback.format_exc())
