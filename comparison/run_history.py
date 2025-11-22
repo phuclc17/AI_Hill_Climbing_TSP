@@ -26,13 +26,7 @@ class RunHistory:
 
     @staticmethod
     def save_run(run_result: Dict[str, Any]):
-        """
-        Thêm một kết quả chạy mới vào file lịch sử.
-        
-        Args:
-            run_result (Dict): Một dict chứa thông tin về lần chạy 
-                               (ví dụ: algo, params, distance, time).
-        """
+      
         history = RunHistory.load_history()
         
         # Thêm thông tin thời gian
