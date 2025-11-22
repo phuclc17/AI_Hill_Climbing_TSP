@@ -1,37 +1,55 @@
 # File: gui/main_window.py
 
 import sys
+import time
+import traceback
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QTabWidget, QTextEdit, QLabel, QGroupBox, 
                              QFormLayout, QComboBox, QSpinBox, 
                              QDoubleSpinBox, QPushButton, QSplitter,
                              QStackedWidget, QMessageBox, QTableWidget, 
-                             QTableWidgetItem, QHeaderView, QSlider)
-from PyQt5.QtCore import Qt
+                             QTableWidgetItem, QHeaderView, QSlider, QApplication)
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QColor
 
+# Import Matplotlib
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 
+# Import Logic
 from utils.data_loader import DataLoader
 from utils.distance_matrix import DistanceMatrix
 from models.city import City
 from models.tour import Tour
 from gui.solver_thread import SolverThread
+from comparison.performance_analyzer import PerformanceAnalyzer 
 
 # --- DARK THEME STYLESHEET ---
 DARK_STYLESHEET = """
 QMainWindow { background-color: #1e1e2e; color: #cdd6f4; }
 QWidget { color: #cdd6f4; }
-QGroupBox { font-weight: bold; border: 1px solid #313244; border-radius: 6px; margin-top: 12px; padding-top: 10px; }
+QGroupBox { 
+    font-weight: bold; border: 1px solid #313244; 
+    border-radius: 6px; margin-top: 12px; padding-top: 10px; 
+}
 QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; color: #89b4fa; }
-QPushButton { background-color: #313244; border: none; border-radius: 4px; padding: 8px; color: #cdd6f4; font-weight: bold; }
+QPushButton { 
+    background-color: #313244; border: none; border-radius: 4px; 
+    padding: 8px; color: #cdd6f4; font-weight: bold; 
+}
 QPushButton:hover { background-color: #45475a; }
 QPushButton:pressed { background-color: #585b70; }
+QPushButton:disabled { background-color: #2a2b3c; color: #5c5f77; }
+
+/* Nút Chạy Xanh */
 QPushButton#btn_run { background-color: #a6e3a1; color: #1e1e2e; }
 QPushButton#btn_run:hover { background-color: #94e2d5; }
-QPushButton:disabled { background-color: #45475a; color: #7f849c; }
+
+/* Nút Benchmark Tím (Mới) */
+QPushButton#btn_bench { background-color: #cba6f7; color: #1e1e2e; }
+QPushButton#btn_bench:hover { background-color: #f5c2e7; }
+
 QTabWidget::pane { border: 1px solid #313244; background: #1e1e2e; }
 QTabBar::tab { background: #313244; color: #a6adc8; padding: 8px 16px; margin-right: 2px; border-top-left-radius: 4px; border-top-right-radius: 4px; }
 QTabBar::tab:selected { background: #89b4fa; color: #1e1e2e; font-weight: bold; }
@@ -45,6 +63,7 @@ QSlider::groove:horizontal { border: 1px solid #45475a; height: 8px; background:
 QSlider::handle:horizontal { background: #89b4fa; border: 1px solid #89b4fa; width: 18px; height: 18px; margin: -7px 0; border-radius: 9px; }
 """
 
+# --- LỚP VẼ BIỂU ĐỒ ---
 class PlotCanvas(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -52,21 +71,26 @@ class PlotCanvas(QWidget):
         self.figure.patch.set_facecolor('#1e1e2e')
         self.canvas = FigureCanvas(self.figure)
         self.axes = self.figure.add_subplot(111)
+        
         layout = QVBoxLayout()
         layout.addWidget(self.canvas)
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
+
     def clear_plot(self):
         self.axes.clear()
         self.axes.set_facecolor('#181825')
         self.canvas.draw()
 
+# --- TAB 1: TRỰC QUAN HÓA ---
 class DashboardTab(QWidget):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         layout = QHBoxLayout(self)
+        
         self.map_canvas = PlotCanvas(self)
         self.conv_canvas = PlotCanvas(self)
+        
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.map_canvas)
         splitter.addWidget(self.conv_canvas)
@@ -81,12 +105,14 @@ class DashboardTab(QWidget):
         y = [c.y for c in cities]
         ax.scatter(x, y, c='#89b4fa', s=60, zorder=3, label='Thành phố')
         for c in cities: ax.text(c.x, c.y, f"  {c.name}", color='#bac2de', fontsize=9)
+        
         if tour:
             tx = [c.x for c in tour.cities] + [tour.cities[0].x]
             ty = [c.y for c in tour.cities] + [tour.cities[0].y]
             ax.plot(tx, ty, c='#f38ba8', linewidth=2, zorder=2, label=f'{tour.distance:.1f} km')
             start = tour.cities[0]
             ax.scatter([start.x], [start.y], c='#a6e3a1', s=150, marker='*', zorder=4, label='Bắt đầu')
+
         ax.set_title(f"Bản đồ Tour ({len(cities)} thành phố)", color='white', pad=10)
         ax.set_xlabel("Kinh độ", color='#a6adc8'); ax.set_ylabel("Vĩ độ", color='#a6adc8')
         ax.tick_params(colors='#a6adc8')
@@ -110,6 +136,7 @@ class DashboardTab(QWidget):
         ax.grid(color='#313244', linestyle='--')
         self.conv_canvas.canvas.draw()
 
+# --- TAB 2: BẢNG SO SÁNH ---
 class ComparisonTab(QWidget):
     def __init__(self):
         super().__init__()
@@ -141,10 +168,11 @@ class ComparisonTab(QWidget):
         if distance > 8000: stars = "⭐⭐"
         self.table.setItem(row, 4, create_item(stars))
 
+# --- CỬA SỔ CHÍNH ---
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("TSP Solver Pro - Hill Climbing & PSO (Dynamic Data)")
+        self.setWindowTitle("TSP Solver Pro - Hill Climbing & PSO (Full Benchmark)")
         self.setGeometry(50, 50, 1400, 850)
         self.setStyleSheet(DARK_STYLESHEET)
         self.all_cities = []; self.cities = []; self.distance_matrix = None; self.solver_thread = None 
@@ -161,7 +189,7 @@ class MainWindow(QMainWindow):
         sidebar.setFixedWidth(320)
         side_layout = QVBoxLayout(sidebar)
         
-        grp_data = QGroupBox("📍 DỮ LIỆU ĐẦU VÀO")
+        grp_data = QGroupBox("📍 DỮ LIỆU")
         l_data = QVBoxLayout(grp_data)
         self.lbl_city_count = QLabel("Đang tải...")
         l_data.addWidget(self.lbl_city_count)
@@ -178,9 +206,8 @@ class MainWindow(QMainWindow):
         self.combo_algo.currentIndexChanged.connect(self.on_algo_changed)
         l_algo.addRow("Thuật toán:", self.combo_algo)
         
-        self.combo_start_city = QComboBox() # Đây là biến mới
+        self.combo_start_city = QComboBox()
         l_algo.addRow("Điểm Xuất Phát:", self.combo_start_city)
-        # -------------------------------------------------------
 
         self.stack_params = QStackedWidget()
         
@@ -213,11 +240,20 @@ class MainWindow(QMainWindow):
         l_algo.addRow(self.stack_params)
         side_layout.addWidget(grp_algo)
 
-        self.btn_run = QPushButton("BẮT ĐẦU CHẠY")
+        # 3. Control
+        self.btn_run = QPushButton("CHẠY TRỰC QUAN (1 Lần)")
         self.btn_run.setObjectName("btn_run")
         self.btn_run.setFixedHeight(40)
         self.btn_run.clicked.connect(self.on_run)
         side_layout.addWidget(self.btn_run)
+        
+        # --- NÚT BENCHMARK MỚI ---
+        self.btn_bench = QPushButton("CHẠY KIỂM THỬ (5 Lần)")
+        self.btn_bench.setObjectName("btn_bench")
+        self.btn_bench.setFixedHeight(35)
+        self.btn_bench.clicked.connect(self.on_run_benchmark)
+        side_layout.addWidget(self.btn_bench)
+        # -------------------------
         
         grp_res = QGroupBox("🏆 KẾT QUẢ")
         l_res = QFormLayout(grp_res)
@@ -242,6 +278,7 @@ class MainWindow(QMainWindow):
         self.log_box = QTextEdit()
         self.log_box.setFixedHeight(180)
         self.log_box.setReadOnly(True)
+        self.log_box.setStyleSheet("font-family: Consolas, 'Courier New', monospace;") 
         cont_layout.addWidget(self.tabs, stretch=3)
         cont_layout.addWidget(QLabel("📝 NHẬT KÝ GIẢI PHÁP (LOG)"))
         cont_layout.addWidget(self.log_box, stretch=1)
@@ -264,12 +301,10 @@ class MainWindow(QMainWindow):
         self.cities = self.all_cities[:count]
         self.distance_matrix = DistanceMatrix(self.cities)
         self.lbl_city_count.setText(f"{count} thành phố")
-        
         self.combo_start_city.clear()
         self.combo_start_city.addItem("Ngẫu nhiên", None)
         for c in self.cities:
             self.combo_start_city.addItem(c.name, c.id)
-            
         self.tab_dash.update_map(self.cities, None)
         self.populate_matrix_table()
 
@@ -296,32 +331,13 @@ class MainWindow(QMainWindow):
         self.log_box.append(f'<span style="color:{hex_color}">{msg}</span>')
 
     def on_run(self):
+        """Chạy trực quan (1 lần)"""
         if not self.cities: return
         algo = self.combo_algo.currentText()
-        params = {}
-        
-        # --- LẤY ĐIỂM XUẤT PHÁT CHUNG ---
-        start_id = self.combo_start_city.currentData()
-        # ---------------------------------
-
-        if "Hill" in algo:
-            params = {
-                'initial_method': self.hc_method.currentText(),
-                'start_city_id': start_id, # Truyền cho HC
-                'seed': self.hc_seed.value(),
-                'max_no_improve': self.hc_improve.value()
-            }
-        else:
-            params = {
-                'start_city_id': start_id, # Truyền cho PSO 
-                'swarm_size': self.pso_swarm.value(),
-                'num_iterations': self.pso_iter.value(),
-                'w': self.pso_w.value(),
-                'c1': self.pso_c1.value(),
-                'c2': self.pso_c2.value()
-            }
+        params = self._get_current_params(algo)
 
         self.btn_run.setEnabled(False)
+        self.btn_bench.setEnabled(False)
         self.slider_cities.setEnabled(False)
         self.log_box.clear()
         
@@ -333,8 +349,88 @@ class MainWindow(QMainWindow):
         self.thread.log_signal.connect(lambda s: self.log(f"  >> {s}", "#a6adc8"))
         self.thread.start()
 
+    def on_run_benchmark(self):
+        """Chạy kiểm thử (5 lần)"""
+        if not self.cities: return
+        algo_name = self.combo_algo.currentText()
+        
+        # Lấy cả 2 bộ tham số để truyền vào Analyzer
+        hc_params = {
+            'initial_method': self.hc_method.currentText(),
+            'start_city_id': self.combo_start_city.currentData(),
+            'seed': None, # Random seed cho benchmark
+            'max_no_improve': self.hc_improve.value()
+        }
+        pso_params = {
+            'swarm_size': self.pso_swarm.value(),
+            'num_iterations': self.pso_iter.value(),
+            'w': self.pso_w.value(),
+            'c1': self.pso_c1.value(),
+            'c2': self.pso_c2.value()
+        }
+
+        self.log("="*40, "white")
+        self.log(f"📊 ĐANG CHẠY KIỂM THỬ 5 LẦN ({algo_name})...", "blue")
+        self.log("Vui lòng đợi (giao diện có thể tạm dừng)...", "white")
+        QApplication.processEvents() # Cập nhật UI
+
+        try:
+            analyzer = PerformanceAnalyzer(self.cities, self.distance_matrix)
+            
+            # Chạy phân tích
+            # Lưu ý: PerformanceAnalyzer được thiết kế để chạy cả 2, 
+            # nhưng ở đây ta chỉ quan tâm kết quả của thuật toán đang chọn
+            analyzer.run_analysis(hc_params, pso_params, num_runs=5)
+            stats = analyzer.get_statistics()
+            
+            # Lấy kết quả của thuật toán hiện tại
+            # (Tên key phải khớp với trong performance_analyzer.py)
+            key_map = {"Hill Climbing": "Hill Climbing", "PSO": "PSO"}
+            my_stats = stats.get(key_map.get(algo_name))
+            
+            if my_stats:
+                avg_dist = my_stats['distance']
+                avg_time = my_stats['time']
+                best_dist = my_stats['best_distance']
+                
+                self.log(f"✅ KẾT QUẢ KIỂM THỬ ({algo_name}):", "green")
+                self.log(f"   • Trung bình quãng đường: {avg_dist:.2f} km", "white")
+                self.log(f"   • Tốt nhất trong 5 lần: {best_dist:.2f} km", "white")
+                self.log(f"   • Thời gian trung bình: {avg_time:.4f} s", "white")
+                
+                # Thêm vào bảng so sánh
+                self.tab_compare.add_result(f"{algo_name} (Avg 10)", avg_dist, avg_time, "10 runs")
+                self.tabs.setCurrentIndex(2)
+            else:
+                self.log("❌ Không có kết quả thống kê.", "red")
+
+        except Exception as e:
+            self.log(f"❌ Lỗi kiểm thử: {e}", "red")
+            import traceback
+            print(traceback.format_exc())
+
+    def _get_current_params(self, algo):
+        start_id = self.combo_start_city.currentData()
+        if "Hill" in algo:
+            return {
+                'initial_method': self.hc_method.currentText(),
+                'start_city_id': start_id,
+                'seed': self.hc_seed.value(),
+                'max_no_improve': self.hc_improve.value()
+            }
+        else:
+            return {
+                'start_city_id': start_id,
+                'swarm_size': self.pso_swarm.value(),
+                'num_iterations': self.pso_iter.value(),
+                'w': self.pso_w.value(),
+                'c1': self.pso_c1.value(),
+                'c2': self.pso_c2.value()
+            }
+
     def on_finish(self, best, history, sol_log, elapsed):
         self.btn_run.setEnabled(True)
+        self.btn_bench.setEnabled(True)
         self.slider_cities.setEnabled(True)
         self.lbl_best_dist.setText(f"{best.distance:.1f} km")
         self.lbl_time.setText(f"{elapsed:.4f} s")
@@ -351,7 +447,6 @@ class MainWindow(QMainWindow):
              for item in sol_log[-10:]: self.log(f"[{item[0]}] {item[1]:.2f} km | {item[2]}", "white")
         else:
              for step, dist, desc in sol_log: self.log(f"[{step}] {dist:.2f} km | {desc}", "white")
-        
         path = " -> ".join([c.name for c in best.cities])
         self.log(f"📍 Lộ trình: {path} -> {best.cities[0].name}", "#89b4fa")
         self.tabs.setCurrentIndex(0)

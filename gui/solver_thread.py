@@ -27,7 +27,7 @@ class SolverThread(QThread):
         self.distance_matrix = distance_matrix
 
     def run(self):
-        self.log_signal.emit(f"⏳ [THREAD] Đang khởi tạo {self.algo_name}...")
+        self.log_signal.emit(f"[THREAD] Đang khởi tạo {self.algo_name}...")
         
         start_time = time.perf_counter()
         best_tour = None
@@ -35,7 +35,7 @@ class SolverThread(QThread):
         solution_log = []
         
         try:
-            # --- 1. CHẠY THUẬT TOÁN ---
+            # 1. CHẠY THUẬT TOÁN 
             
             if "Hill" in self.algo_name:
                 solver = HillClimbingSolver(self.cities, self.distance_matrix)
