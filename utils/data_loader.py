@@ -4,22 +4,11 @@ from models.city import City
 
 
 class DataLoader:
-    """
-    Lớp chịu trách nhiệm load dữ liệu thành phố từ file JSON.
-    """
+  
     
     @staticmethod
     def load_cities_from_json(filepath: str) -> List[City]:
-        """
-        Đọc file JSON chứa thông tin các thành phố và chuyển đổi 
-        thành danh sách các đối tượng City.
-        
-        Args:
-            filepath (str): Đường dẫn tới file JSON
-            
-        Returns:
-            List[City]: Danh sách các đối tượng City
-        """
+   
         with open(filepath, 'r', encoding='utf-8') as file:
             data = json.load(file)
             
@@ -39,15 +28,7 @@ class DataLoader:
     
     @staticmethod
     def get_city_names(filepath: str) -> Dict[int, str]:
-        """
-        Lấy mapping giữa ID và tên thành phố.
         
-        Args:
-            filepath (str): Đường dẫn tới file JSON
-            
-        Returns:
-            Dict[int, str]: Dictionary với key là id, value là tên thành phố
-        """
         with open(filepath, 'r', encoding='utf-8') as file:
             data = json.load(file)
             

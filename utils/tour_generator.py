@@ -70,17 +70,7 @@ def nearest_neighbor_tour(cities: List[City], distance_matrix: DistanceMatrix,
 
 
 def greedy_tour(cities: List[City], distance_matrix: DistanceMatrix) -> List[City]:
-    """
-    Tạo tour bằng thuật toán Greedy (tham lam).
-    Chọn các cạnh ngắn nhất mà không tạo thành chu trình sớm.
-    
-    Args:
-        cities (List[City]): Danh sách các thành phố
-        distance_matrix (DistanceMatrix): Ma trận khoảng cách
-        
-    Returns:
-        List[City]: Tour được tạo theo thuật toán Greedy
-    """
+
     if not cities:
         return []
     

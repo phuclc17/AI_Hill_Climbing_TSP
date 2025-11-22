@@ -4,10 +4,7 @@ from models.city import City
 
 
 class DistanceMatrix:
-    """
-    Lớp quản lý ma trận khoảng cách giữa các thành phố.
-    Tính toán một lần và lưu trữ để tránh tính toán lại nhiều lần.
-    """
+  
     
     def __init__(self, cities: List[City]):
         """
@@ -41,17 +38,7 @@ class DistanceMatrix:
     
     @staticmethod
     def _calculate_distance(city_a: City, city_b: City) -> float:
-        """
-        Tính khoảng cách Euclidean giữa hai thành phố.
-        Sử dụng công thức Haversine để tính khoảng cách thực tế trên Trái Đất.
-        
-        Args:
-            city_a (City): Thành phố thứ nhất
-            city_b (City): Thành phố thứ hai
-            
-        Returns:
-            float: Khoảng cách tính bằng km
-        """
+     
         lat1 = math.radians(city_a.y)
         lon1 = math.radians(city_a.x)
         lat2 = math.radians(city_b.y)

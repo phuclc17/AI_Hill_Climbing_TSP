@@ -24,10 +24,7 @@ class PerformanceAnalyzer:
         }
 
     def run_analysis(self, hc_params: dict, pso_params: dict, num_runs: int = 5):
-        """
-        Chạy so sánh.
-        num_runs: Số lần chạy (Mặc định là 5 cho nhanh, bạn có thể đổi)
-        """
+     
         self.results = { "Hill Climbing": {"distances": [], "times": []},
                          "PSO": {"distances": [], "times": []} }
         
@@ -38,8 +35,7 @@ class PerformanceAnalyzer:
             hc_solver = HillClimbingSolver(self.cities, self.distance_matrix)
             start_time_hc = time.perf_counter()
             
-            # [SỬA LỖI TẠI ĐÂY]: Nhận 4 giá trị trả về (tour, history, log, time)
-            # Chúng ta dùng dấu _ để bỏ qua những thứ không cần thiết cho thống kê
+          
             best_tour_hc, _, _, _ = hc_solver.run(**hc_params)
             
             time_hc = time.perf_counter() - start_time_hc
